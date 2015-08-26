@@ -55,7 +55,7 @@ def Jfactor(theta, Milky_way_rhos, Milky_way_rs, Milky_way_radius, Rsol, rhopow=
     return res
 
 
-theta = np.arange(1.0, 175.0, 5.0) * np.pi/180.0
+theta = np.arange(0.01, 181.0, 5.0) * np.pi/180.0
 Jdecay = theta * 0.0
 Jannihilate = theta * 0.0
 for i in range(theta.size):
@@ -68,3 +68,23 @@ ax.set_yscale("log")
 ax.plot(theta * 180./np.pi, Jdecay, color="c")
 ax.plot(theta * 180./np.pi, Jannihilate, color="m")
 pl.savefig("Decay.pdf")
+
+
+# Now integrate over the angles
+def integrate_angle(spl, thtmin, thtmax):
+    def func(x, spl, norm):
+        return np.sin(x) * spl(x) * norm
+    norm = 1./(np.cos(thtmin)-np.cos(thtmax))
+    res, err = quad(func, thtmin, thtmax, args=(spl, norm))
+    return res
+
+
+from scipy.interpolate import interp1d
+
+# Let us cheat on the lower limit, it should not matter
+theta[0] = 0.0
+Jdecay_spl = interp1d(theta, Jdecay, kind="cubic")
+Jannihilate_spl = interp1d(theta, Jdecay, kind="cubic")
+
+print integrate_angle(Jdecay_spl, 0.0, np.pi)
+print integrate_angle(Jannihilate_spl, 0.0, np.pi)
