@@ -37,30 +37,69 @@ print "Milky way rhos: ", Milky_way_rhos
 Rsol = 8.3e-3 * 0.7
 
 
-def rho_nfw(r, Milky_way_rhos, Milky_way_rs):
+def rho_iso(r, Milky_way_rhos, Milky_way_rs, Milky_way_radius):
+    if r > Milky_way_radius:
+        return 0
+    return Milky_way_rhos/(r/Milky_way_rs)**2
+
+
+def rho_nfw(r, Milky_way_rhos, Milky_way_rs, Milky_way_radius):
+    if r > Milky_way_radius:
+        return 0
     return Milky_way_rhos/(r/Milky_way_rs)/(1.+r/Milky_way_rs)**2
 
 
-def Jfactor(theta, Milky_way_rhos, Milky_way_rs, Milky_way_radius, Rsol, rhopow=1):
-    Rhosol = rho_nfw(Rsol, Milky_way_rhos, Milky_way_rs)
+def Jfactor(
+        theta,
+        Milky_way_rhos,
+        Milky_way_rs,
+        Milky_way_radius,
+        rhofunction,
+        Rsol,
+        rhopow=1):
+    Rhosol = rhofunction(Rsol, Milky_way_rhos, Milky_way_rs, Milky_way_radius)
 
-    def integ_func(s, theta, Milky_way_rhos, Milky_way_rs, Rsol, Rhosol):
+    def integ_func(
+            s,
+            theta,
+            Milky_way_rhos,
+            Milky_way_rs,
+            Rsol,
+            Rhosol,
+            rhofunction,
+            Milky_way_radius):
         r = (Rsol**2 + s**2 - 2 * Rsol * s * np.cos(theta))**0.5
-        return 1. / Rsol * (rho_nfw(r, Milky_way_rhos, Milky_way_rs) / Rhosol) ** rhopow
+        return 1. / Rsol * (rhofunction(r,
+                                        Milky_way_rhos,
+                                        Milky_way_rs,
+                                        Milky_way_radius) / Rhosol) ** rhopow
 
     res, err = quad(
-        integ_func, 0, Milky_way_radius, args=(
-            theta, Milky_way_rhos, Milky_way_rs, Rsol, Rhosol))
+        integ_func, 0, np.inf, args=(
+            theta, Milky_way_rhos, Milky_way_rs, Rsol, Rhosol, rhofunction, Milky_way_radius))
 
     return res
 
-
+rho = rho_nfw
 theta = np.arange(0.01, 181.0, 5.0) * np.pi/180.0
 Jdecay = theta * 0.0
 Jannihilate = theta * 0.0
 for i in range(theta.size):
-    Jdecay[i] = Jfactor(theta[i], Milky_way_rhos, Milky_way_rs, Milky_way_radius, Rsol)
-    Jannihilate[i] = Jfactor(theta[i], Milky_way_rhos, Milky_way_rs, Milky_way_radius, Rsol, rhopow=2)
+    Jdecay[i] = Jfactor(
+        theta[i],
+        Milky_way_rhos,
+        Milky_way_rs,
+        Milky_way_radius,
+        rho,
+        Rsol)
+    Jannihilate[i] = Jfactor(
+        theta[i],
+        Milky_way_rhos,
+        Milky_way_rs,
+        Milky_way_radius,
+        rho,
+        Rsol,
+        rhopow=2)
 
 import pylab as pl
 ax = pl.subplot(221)
@@ -81,10 +120,10 @@ def integrate_angle(spl, thtmin, thtmax):
 
 from scipy.interpolate import interp1d
 
-# Let us cheat on the lower limit, it should not matter
+# Let us slightly cheat on the lower limit. Is this reasonable?
 theta[0] = 0.0
 Jdecay_spl = interp1d(theta, Jdecay, kind="cubic")
-Jannihilate_spl = interp1d(theta, Jdecay, kind="cubic")
+Jannihilate_spl = interp1d(theta, Jannihilate, kind="cubic")
 
 print integrate_angle(Jdecay_spl, 0.0, np.pi)
 print integrate_angle(Jannihilate_spl, 0.0, np.pi)
